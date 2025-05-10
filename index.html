@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Space Collector Ultimate</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: black;
+      overflow: hidden;
+      font-family: sans-serif;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 1.5s infinite;
+    }
+    #rocket {
+      position: absolute;
+      font-size: 40px;
+      transform-origin: center;
+      z-index: 10;
+      transition: transform 0.1s;
+    }
+    .coin {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      background: gold;
+      border-radius: 50%;
+      animation: float 2s infinite;
+    }
+    .rock {
+      position: absolute;
+      width: 35px;
+      height: 35px;
+      background: gray;
+      border-radius: 50%;
+    }
+    #info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 16px;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 10px;
+      border-radius: 8px;
+      z-index: 20;
+    }
+    #gameOver {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: red;
+      font-size: 36px;
+      background: rgba(0,0,0,0.7);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 30;
+    }
+    #joystick {
+      position: fixed;
+      bottom: 80px;
+      left: 50px;
+      width: 120px;
+      height: 120px;
+      display: none;
+      z-index: 20;
+    }
+    #joystickBase, #joystickKnob {
+      position: absolute;
+      border-radius: 50%;
+    }
+    #joystickBase {
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.2);
+    }
+    #joystickKnob {
+      width: 60px;
+      height: 60px;
+      top: 30px;
+      left: 30px;
+      background: rgba(255,255,255,0.6);
+      transform: translate(0, 0);
+      transition: transform 0.05s;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      #joystick {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="info">Score: <span id="score">0</span> | Coins: <span id="coins">0</span></div>
+    <div id="rocket">🚀</div>
+    <div id="gameOver">GAME OVER<br><small>Restarting...</small></div>
+    <div id="joystick">
+      <div id="joystickBase"></div>
+      <div id="joystickKnob"></div>
+    </div>
+  </div>
+  <script>
+    const rocket = document.getElementById('rocket');
+    const scoreEl = document.getElementById('score');
+    const coinsEl = document.getElementById('coins');
+    const gameOverEl = document.getElementById('gameOver');
+    const gameContainer = document.getElementById('gameContainer');
+    const knob = document.getElementById('joystickKnob');
+    const joystick = document.getElementById('joystick');
+
+    let score = 0, coins = 0, isMobile = window.matchMedia("(pointer: coarse)").matches;
+    let posX = window.innerWidth / 2, posY = window.innerHeight / 2;
+    let moveX = 0, moveY = 0;
+    let isGameRunning = true;
+
+    function updateRocket() {
+      posX += moveX;
+      posY += moveY;
+      posX = Math.max(20, Math.min(window.innerWidth - 20, posX));
+      posY = Math.max(20, Math.min(window.innerHeight - 20, posY));
+      rocket.style.left = `${posX}px`;
+      rocket.style.top = `${posY}px`;
+      if (moveX !== 0 || moveY !== 0) {
+        const angle = Math.atan2(moveY, moveX);
+        rocket.style.transform = `rotate(${angle + Math.PI/2}rad)`;
+      }
+    }
+
+    function createStar() {
+      const s = document.createElement('div');
+      s.className = 'star';
+      s.style.left = `${Math.random()*100}vw`;
+      s.style.top = `${Math.random()*100}vh`;
+      gameContainer.appendChild(s);
+    }
+
+    function createCoin() {
+      const c = document.createElement('div');
+      c.className = 'coin';
+      c.style.left = `${Math.random() * (window.innerWidth - 28)}px`;
+      c.style.top = `-30px`;
+      gameContainer.appendChild(c);
+
+      function fall() {
+        if (!isGameRunning) return;
+        const top = parseFloat(c.style.top);
+        c.style.top = `${top + 3}px`;
+
+        if (isColliding(c, rocket)) {
+          coins++;
+          score += 10;
+          coinsEl.textContent = coins;
+          scoreEl.textContent = score;
+          c.remove();
+          return;
+        }
+
+        if (top > window.innerHeight) {
+          c.remove();
+          return;
+        }
+
+        requestAnimationFrame(fall);
+      }
+
+      fall();
+    }
+
+    function createRock() {
+      const r = document.createElement('div');
+      r.className = 'rock';
+      r.style.left = `${Math.random() * (window.innerWidth - 35)}px`;
+      r.style.top = `-40px`;
+      gameContainer.appendChild(r);
+
+      function fall() {
+        if (!isGameRunning) return;
+        const top = parseFloat(r.style.top);
+        r.style.top = `${top + 4}px`;
+
+        if (isColliding(r, rocket)) {
+          endGame();
+          return;
+        }
+
+        if (top > window.innerHeight) {
+          r.remove();
+          return;
+        }
+
+        requestAnimationFrame(fall);
+      }
+
+      fall();
+    }
+
+    function isColliding(a, b) {
+      const aRect = a.getBoundingClientRect();
+      const bRect = b.getBoundingClientRect();
+      return !(
+        aRect.top > bRect.bottom ||
+        aRect.bottom < bRect.top ||
+        aRect.left > bRect.right ||
+        aRect.right < bRect.left
+      );
+    }
+
+    function endGame() {
+      isGameRunning = false;
+      gameOverEl.style.display = 'block';
+      setTimeout(() => location.reload(), 3000);
+    }
+
+    if (isMobile) {
+      let center = {x: 0, y: 0};
+
+      joystick.addEventListener('touchstart', (e) => {
+        const rect = joystick.getBoundingClientRect();
+        center = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+      });
+
+      joystick.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        let dx = touch.clientX - center.x;
+        let dy = touch.clientY - center.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const maxDist = 50;
+        if (dist > maxDist) {
+          dx = dx * maxDist / dist;
+          dy = dy * maxDist / dist;
+        }
+        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        moveX = dx / 15;
+        moveY = dy / 15;
+      }, { passive: false });
+
+      joystick.addEventListener('touchend', () => {
+        knob.style.transform = 'translate(0,0)';
+        moveX = 0;
+        moveY = 0;
+      });
+    } else {
+      window.addEventListener('mousemove', e => {
+        moveX = (e.clientX - posX) / 60;
+        moveY = (e.clientY - posY) / 60;
+      });
+    }
+
+    function loop() {
+      if (!isGameRunning) return;
+      updateRocket();
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      for (let i = 0; i < 80; i++) createStar();
+      rocket.style.left = posX + 'px';
+      rocket.style.top = posY + 'px';
+      loop();
+
+      setInterval(() => { if (isGameRunning) createCoin(); }, 1200);
+      setInterval(() => { if (isGameRunning) createRock(); }, 1800);
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
