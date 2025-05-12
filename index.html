@@ -107,20 +107,7 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
-    @media (hover: none) and (pointer: coarse) {
-      #joystick {
-        display: block;
-      }
-    }
   </style>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F6G77F3Z0Y"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-F6G77F3Z0Y');
-  </script>
 </head>
 <body>
   <div id="gameContainer">
@@ -132,6 +119,7 @@
       <div id="joystickKnob"></div>
     </div>
   </div>
+
   <script>
     const rocket = document.getElementById('rocket');
     const scoreEl = document.getElementById('score');
@@ -141,10 +129,16 @@
     const knob = document.getElementById('joystickKnob');
     const joystick = document.getElementById('joystick');
 
-    let score = 0, coins = 0, isMobile = window.matchMedia("(pointer: coarse)").matches;
+    let score = 0, coins = 0;
     let posX = window.innerWidth / 2, posY = window.innerHeight / 2;
     let moveX = 0, moveY = 0;
     let isGameRunning = true;
+
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      joystick.style.display = 'block';
+    }
 
     function updateRocket() {
       posX += moveX;
